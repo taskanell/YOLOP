@@ -120,7 +120,14 @@ def if_y(samples_x):
     return True
     
 def fitlane(mask, sel_labels, labels, stats):
+    right_line = []
+    left_line = []
     H, W = mask.shape
+    neg_thres = 1000
+    pos_thres = -1000
+
+    print(sel_labels)
+    print(np.unique(labels))
     for label_group in sel_labels:
         states = [stats[k] for k in label_group]
         x, y, w, h, _ = states[0]
@@ -135,6 +142,26 @@ def fitlane(mask, sel_labels, labels, stats):
         
         samples_x = [np.where(labels[int(sample_y)]==t)[0] for sample_y in samples_y]
 
+        samples_x_line = np.linspace(x, W-1, 30)
+            # else:
+            #     samples_x = np.linspace(x, x_max+w-1, 30)
+        samples_y_line = [np.where(labels[:, int(sample_x)]==t)[0] for sample_x in samples_x_line]
+        samples_y_line = [int(np.mean(sample_y)) if len(sample_y) else -1 for sample_y in samples_y_line]
+        samples_x_line = np.array(samples_x_line)
+        samples_y_line = np.array(samples_y_line)
+        samples_x_line = samples_x_line[samples_y_line != -1]
+        samples_y_line = samples_y_line[samples_y_line != -1]
+        func_line = np.polyfit(samples_x_line, samples_y_line, 1)
+        
+        if func_line[0] < 0:
+            if func_line[0] <= neg_thres:
+                    neg_thres = func_line[0]
+                    left_line = func_line 
+        elif func_line[0] > 0:
+                if func_line[0] >= pos_thres:
+                    pos_thres = func_line[0]
+                    right_line = func_line  
+
         if if_y(samples_x):
             samples_x = [int(np.mean(sample_x)) if len(sample_x) else -1 for sample_x in samples_x]
             samples_x = np.array(samples_x)
@@ -142,6 +169,9 @@ def fitlane(mask, sel_labels, labels, stats):
             samples_y = samples_y[samples_x != -1]
             samples_x = samples_x[samples_x != -1]
             func = np.polyfit(samples_y, samples_x, 2)
+            
+            #print(func)
+
             x_limits = np.polyval(func, H-1)
             # if (y_max + h - 1) >= 720:
             if x_limits < 0 or x_limits > W:
@@ -150,10 +180,10 @@ def fitlane(mask, sel_labels, labels, stats):
                 draw_y = np.linspace(y, y+h-1, h)
             else:
                 # draw_y = np.linspace(y, y+h-1, y+h-y)
-                draw_y = np.linspace(y, H-1, H-y)
+                draw_y = np.linspace(y, H-1, H-y)              
             draw_x = np.polyval(func, draw_y)
-            # draw_y = draw_y[draw_x < W]
-            # draw_x = draw_x[draw_x < W]
+                    # draw_y = draw_y[draw_x < W]
+                    # draw_x = draw_x[draw_x < W]
             draw_points = (np.asarray([draw_x, draw_y]).T).astype(np.int32)
             cv2.polylines(mask, [draw_points], False, 1, thickness=15)
         else:
@@ -168,7 +198,11 @@ def fitlane(mask, sel_labels, labels, stats):
             samples_x = samples_x[samples_y != -1]
             samples_y = samples_y[samples_y != -1]
             try:
+                #print('ALSO HERE')
                 func = np.polyfit(samples_x, samples_y, 2)
+
+                #print(func)
+                #print('Here 2-',counter)
             except:
                 pass
             # y_limits = np.polyval(func, 0)
@@ -186,21 +220,91 @@ def fitlane(mask, sel_labels, labels, stats):
                 # if x+w-1 < 640:
                 #     draw_x = np.linspace(0, x+w-1, w+x-x)
                 else:
-                    draw_x = np.linspace(x, W-1, W-x)
+                    draw_x = np.linspace(x, W-1, W-x)                                 
             draw_y = np.polyval(func, draw_x)
+                        # draw_y = draw_y[draw_x < W]
+                        # draw_x = draw_x[draw_x < W]
             draw_points = (np.asarray([draw_x, draw_y]).T).astype(np.int32)
             cv2.polylines(mask, [draw_points], False, 1, thickness=15)
-    return mask
+    #print(mask.shape)
+
+    return mask, right_line, left_line
+
+
+def map_coordinates(frame, parameters):
+    """ Function for mapping given 
+    parameters for line construction """
+    
+    height, width, _ = frame.shape  # Take frame size
+    slope, intercept = parameters   # Unpack slope and intercept from the given parameters
+    
+    if slope == 0:
+        print('slope 0')      # Check whether the slope is 0
+        slope = 0.1     # handle it for reducing Divisiob by Zero error
+    
+    y1 = int(height)
+    #y1 = 450            # Point bottom of the frame
+    y2 = int(height*0.6)  # Make point from middle of the frame down  
+    x1 = int((y1 - intercept ) / slope)  # Calculate x1 by the formula (y-intercept)/slope
+    x2 = int((y2 - intercept ) / slope)  # Calculate x2 by the formula (y-intercept)/slope
+    
+    return [[x1, y1, x2, y2]]   # Return point as array
+
+
+def warp_perspective(frame):
+   
+    """ Function for warping the frame 
+    to process it on skyview angle """
+    
+    # Get image size
+    height, width, _ = frame.shape
+    
+    # Offset for frame ratio saving
+    offset = 50    
+    
+    # Perspective points to be warped
+    source_points = np.float32([[int(width*0.46), int(height*0.72)], # Top-left point
+                      [int(width*0.58), int(height*0.72)],           # Top-right point
+                      [int(width*0.30), height],                     # Bottom-left point
+                      [int(width*0.82), height]])                    # Bottom-right point
+    
+    # Window to be shown
+    destination_points = np.float32([[offset, 0],                    # Top-left point
+                      [width-2*offset, 0],                           # Top-right point
+                      [offset, height],                              # Bottom-left point
+                      [width-2*offset, height]])                     # Bottom-right point
+    
+    # Matrix to warp the image for skyview window
+    matrix = cv2.getPerspectiveTransform(source_points, destination_points) 
+    
+    # Final warping perspective 
+    skyview = cv2.warpPerspective(frame, matrix, (width, height))    
+
+    return skyview    # Return skyview frame
 
 def connect_lane(image, shadow_height=0):
     if len(image.shape) == 3:
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
         gray_image = image
+        print(np.unique(gray_image))
+        #cv2.imshow('gray',gray_image)
+        #cv2.waitKey(0)
     if shadow_height:
         image[:shadow_height] = 0
     mask = np.zeros((image.shape[0], image.shape[1]), np.uint8)
     
+    polygon = np.array([[
+    (int(image.shape[1]*0.20), image.shape[0]),              # Bottom-left point
+    (int(image.shape[1]*0.46),  int(image.shape[0]*0.72)),   # Top-left point
+    (int(image.shape[1]*0.58), int(image.shape[0]*0.72)),    # Top-right point
+    (int(image.shape[1]*0.85), image.shape[0]),              # Bottom-right point
+    ]], np.int32)
+    cv2.fillPoly(mask, polygon, 255)
+    #cv2.imshow('mask',mask)
+    #cv2.waitKey(0)
+    
+
     num_labels, labels, stats, centers = cv2.connectedComponentsWithStats(gray_image, connectivity=8, ltype=cv2.CV_32S)
     # ratios = []
     selected_label = []
