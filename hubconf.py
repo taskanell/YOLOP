@@ -5,9 +5,10 @@ from lib.utils.utils import select_device
 from lib.config import cfg
 from lib.models import get_net
 from pathlib import Path
+from tools.yolop_detect import detect
 import os
 
-def yolop(pretrained=True, device="cpu"):
+def yolop(pretrained=True, device="cpu",image=None, conf_thres=0.5, iou_thres=0.45):
     """Creates YOLOP model
     Arguments:
         pretrained (bool): load pretrained weights into the model
@@ -23,8 +24,22 @@ def yolop(pretrained=True, device="cpu"):
         checkpoint = torch.load(path, map_location= device)
         model.load_state_dict(checkpoint['state_dict'])
     model = model.to(device)
-    return model
+    if not image:
+        return model
+    else:
+        detect(model=model,device=device,source=image,conf_thres=conf_thres,iou_thres=iou_thres)
+
+#def hub_detect(model,device):
+    
+    #detect(cfg,opt=opt)
 
 
+if __name__ == '__main__':
+
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--image', type=str, default='', help='image name')
+    opt = parser.parse_args()
 
 
