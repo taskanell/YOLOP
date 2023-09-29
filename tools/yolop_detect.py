@@ -177,7 +177,7 @@ def detect(model,device,source,img_size=640,conf_thres=0.5,iou_thres=0.45):
                 #cv2.circle(image, (x2, y2), 10, (0, 55, 0), 10)
                 cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 5)
             
-            cv2.imshow('exp',image)
+            cv2.imshow('Lines segmentation ',image)
             cv2.waitKey(0)
             
         #skyview_img = warp_perspective(image)
@@ -197,8 +197,8 @@ def detect(model,device,source,img_size=640,conf_thres=0.5,iou_thres=0.45):
             for *xyxy,conf,cls in reversed(det):
                 label_det_pred = f'{names[int(cls)]} {conf:.2f}'
                 plot_one_box(xyxy, img_det , label=label_det_pred, color=colors[int(cls)], line_thickness=2)
-                cv2.imshow('image', img_det)
-                cv2.waitKey(0)  # 1 millisecond
+            cv2.imshow('YOLOP', img_det)
+            cv2.waitKey(0)  # 1 millisecond
         #if dataset.mode == 'images':
             #cv2.imwrite(save_path,img_det)
 
@@ -215,8 +215,8 @@ def detect(model,device,source,img_size=640,conf_thres=0.5,iou_thres=0.45):
             #vid_writer.write(img_det)
         
         #else:
-        cv2.imshow('image', img_det)
-        cv2.waitKey(0)  # 1 millisecond
+            #cv2.imshow('image', img_det)
+            #cv2.waitKey(1)  # 1 millisecond
 
     #print('Results saved to %s' % Path(opt.save_dir))
     print('Done. (%.3fs)' % (time.time() - t0))
