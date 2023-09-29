@@ -506,6 +506,7 @@ class MCnet(nn.Module):
         super(MCnet, self).__init__()
         layers, save= [], []
         self.nc = 1
+        #self.nc = 13
         self.detector_index = -1
         self.det_out_idx = block_cfg[0][0]
         self.seg_out_idx = block_cfg[0][1:]
