@@ -41,7 +41,7 @@ transform=transforms.Compose([
         ])
 
 
-def detect(model,device,source,img_size=640,conf_thres=0.5,iou_thres=0.45):
+def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
 
     #logger, _, _ = create_logger(
         #cfg, cfg.LOG_DIR, 'demo')
@@ -61,6 +61,7 @@ def detect(model,device,source,img_size=640,conf_thres=0.5,iou_thres=0.45):
         model.half()  # to FP16
 
     # Set Dataloader
+    '''
     if source.isnumeric():
         cudnn.benchmark = True  # set True to speed up constant image size inference
         dataset = LoadStreams(source, img_size=img_size)
@@ -68,7 +69,10 @@ def detect(model,device,source,img_size=640,conf_thres=0.5,iou_thres=0.45):
     else:
         dataset = LoadImages(source, img_size=img_size)
         bs = 1  # batch_size
-
+        print ('HERE')
+    '''
+    img = cv2.imread(img, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
+    img = np.ascontiguousarray(img)
 
     # Get names and colors
     names = model.module.names if hasattr(model, 'module') else model.names
@@ -87,98 +91,112 @@ def detect(model,device,source,img_size=640,conf_thres=0.5,iou_thres=0.45):
     inf_time = AverageMeter()
     nms_time = AverageMeter()
     
-    for i, (path, img, img_det, vid_cap,shapes) in tqdm(enumerate(dataset),total = len(dataset)):
+    #for i, (path, img, img_det, vid_cap,shapes) in tqdm(enumerate(dataset),total = len(dataset)):
         #print("Image det: {}".format(img_det.shape))
         #print("Shapes: {}".format(shapes[1][1]))
-        image = img
-        img = transform(img).to(device)
-        img = img.half() if half else img.float()  # uint8 to fp16/32
-        if img.ndimension() == 3:
-            img = img.unsqueeze(0)
+    #source = img
+    image = img
+    img_det = np.copy(img)
+    img = transform(img).to(device)
+    img = img.half() if half else img.float()  # uint8 to fp16/32
+    if img.ndimension() == 3:
+        img = img.unsqueeze(0)
         # Inference
-        t1 = time_synchronized()
-        det_out, da_seg_out,ll_seg_out= model(img)
-        t2 = time_synchronized()
+    t1 = time_synchronized()
+    det_out, da_seg_out,ll_seg_out= model(img)
+    t2 = time_synchronized()
         #if i == 0:
             #print((det_out[2].shape))
-        inf_out, other = det_out
+    inf_out, other = det_out
         #print ("Other: {}".format(len(other)))
-        inf_time.update(t2-t1,img.size(0))
+    inf_time.update(t2-t1,img.size(0))
 
         # Apply NMS
-        t3 = time_synchronized()
-        det_pred = non_max_suppression(inf_out, conf_thres=conf_thres, iou_thres=iou_thres, classes=None, agnostic=False)
-        #print(det_pred)       
-        t4 = time_synchronized()
+    t3 = time_synchronized()
+    det_pred = non_max_suppression(inf_out, conf_thres=conf_thres, iou_thres=iou_thres, classes=None, agnostic=False)
+    #print(det_pred)       
+    t4 = time_synchronized()
 
-        nms_time.update(t4-t3,img.size(0))
-        det=det_pred[0]
+    nms_time.update(t4-t3,img.size(0))
+    det=det_pred[0]
 
         #save_path = str(opt.save_dir +'/'+ Path(path).name) if dataset.mode != 'stream' else str(opt.save_dir + '/' + "web.mp4")
 
-        _, _, height, width = img.shape
-        h,w,_=img_det.shape
-        pad_w, pad_h = shapes[1][1]
-        pad_w = int(pad_w)
-        pad_h = int(pad_h)
-       # print (pad_w,pad_h)
-        ratio = shapes[1][0][1]
+    #_, _, height, width = img.shape
+    #h,w,_=img_det.shape
+    #pad_w, pad_h = shapes[1][1]
+    #pad_w = int(pad_w)
+    #pad_h = int(pad_h)
+    # print (pad_w,pad_h)
+    #ratio = shapes[1][0][1]
+    ratio = 1
 
-        da_predict = da_seg_out[:, :, pad_h:(height-pad_h),pad_w:(width-pad_w)]
-        da_seg_mask = torch.nn.functional.interpolate(da_predict, scale_factor=int(1/ratio), mode='bilinear')
-        _, da_seg_mask = torch.max(da_seg_mask, 1)
-        da_seg_mask = da_seg_mask.int().squeeze().cpu().numpy()
+    #da_predict = da_seg_out[:, :, pad_h:(height-pad_h),pad_w:(width-pad_w)]
+    da_predict = da_seg_out
+    da_seg_mask = torch.nn.functional.interpolate(da_predict, scale_factor=int(1/ratio), mode='bilinear')
+    _, da_seg_mask = torch.max(da_seg_mask, 1)
+    da_seg_mask = da_seg_mask.int().squeeze().cpu().numpy()
         #print(da_seg_mask.shape)
-        da_seg_mask = morphological_process(da_seg_mask, kernel_size=7)
+    da_seg_mask = morphological_process(da_seg_mask, kernel_size=7)
 
         
-        ll_predict = ll_seg_out[:, :,pad_h:(height-pad_h),pad_w:(width-pad_w)]
-        ll_seg_mask = torch.nn.functional.interpolate(ll_predict, scale_factor=int(1/ratio), mode='bilinear')
-        _, ll_seg_mask = torch.max(ll_seg_mask, 1)
-        ll_seg_mask = ll_seg_mask.int().squeeze().cpu().numpy()
-        #print(ll_seg_mask.shape)
-        # Lane line post-processing
-        ll_seg_mask = morphological_process(ll_seg_mask, kernel_size=7, func_type=cv2.MORPH_CLOSE)
-        #ll_seg_mask, lane_right, lane_left = connect_lane(ll_seg_mask)
-        ll_seg_mask, right_lane, left_lane = connect_lane(ll_seg_mask)
-        if len(left_lane) and len(right_lane):
-            print(np.array(right_lane))
-            print(np.array(left_lane))
-            #print(image.shape)
-            right_line_coords = map_coordinates(image,np.array(right_lane))
-            #right_lane_coords = map_coordinates(image,np.array([-0.82, 506.27]))
-            left_line_coords = map_coordinates(image,np.array(left_lane))
-            print(right_line_coords)
-            print(left_line_coords)
-            x1_ll , y1 , x2_ll, y2 = left_line_coords[0]
-            x1_rl , y1 , x2_rl, y2 = right_line_coords[0]
-            #print(x1_ll,x2_ll)
+    #ll_predict = ll_seg_out[:, :,pad_h:(height-pad_h),pad_w:(width-pad_w)]
+    ll_predict = ll_seg_out
+    ll_seg_mask = torch.nn.functional.interpolate(ll_predict, scale_factor=int(1/ratio), mode='bilinear')
+    _, ll_seg_mask = torch.max(ll_seg_mask, 1)
+    ll_seg_mask = ll_seg_mask.int().squeeze().cpu().numpy()
+    #print(ll_seg_mask.shape)
+    # Lane line post-processing
+    ll_seg_mask = morphological_process(ll_seg_mask, kernel_size=7, func_type=cv2.MORPH_CLOSE)
+    #ll_seg_mask, lane_right, lane_left = connect_lane(ll_seg_mask)
+    ll_seg_mask, right_lane, left_lane = connect_lane(ll_seg_mask)
+    if len(left_lane) and len(right_lane):
+        print(np.array(right_lane))
+        print(np.array(left_lane))
+        #print(image.shape)
+        right_line_coords = map_coordinates(image,np.array(right_lane))
 
-            low_mid = (x1_ll + x1_rl) / 2
-            print(low_mid)
-            up_mid = (x2_ll + x2_rl) / 2
+        #x_point = (right_lane[1] - left_lane[1]) / (left_lane[0] - right_lane[0])
+        #y_point =  left_lane[0] * x_point + left_lane[1]
+        #cv2.circle(image, (int(x_point), int(y_point)), 10, (100, 100, 100), 10)
 
-            cv2.circle(image, (int(low_mid), y1), 10, (0, 0, 100), 10)
-            cv2.circle(image, (int(up_mid), y2), 10, (0, 0, 100), 10)
+        #print(x_point,y_point)
+
+        #right_lane_coords = map_coordinates(image,np.array([-0.82, 506.27]))
+        left_line_coords = map_coordinates(image,np.array(left_lane))
+        print(right_line_coords)
+        print(left_line_coords)
+        x1_ll , y1 , x2_ll, y2 = left_line_coords[0]
+        x1_rl , y1 , x2_rl, y2 = right_line_coords[0]
+        #print(x1_ll,x2_ll)
+
+        low_mid = (x1_ll + x1_rl) / 2
+        print(low_mid)
+        up_mid = (x2_ll + x2_rl) / 2
+
+        
+
+        cv2.circle(image, (int(low_mid), y1), 10, (0, 0, 100), 10)
+        cv2.circle(image, (int(up_mid), y2), 10, (0, 0, 100), 10)
 
 
-            # Unpack line by coordinates
+        # Unpack line by coordinates
             
-            for x1, y1, x2, y2 in right_line_coords:
-                # Draw the line on the created mask 
-                cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 5)
-                #cv2.circle(image, (x1, y1), 10, (0, 0, 100), 10)
-                #cv2.circle(image, (x2, y2), 10, (0, 100, 0), 10)
+        for x1, y1, x2, y2 in right_line_coords:
+            # Draw the line on the created mask 
+            cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 5)
+            #cv2.circle(image, (x1, y1), 10, (0, 0, 100), 10)
+            #cv2.circle(image, (x2, y2), 10, (0, 100, 0), 10)
             
             
-            for x1, y1, x2, y2 in left_line_coords:
-                # Draw the line on the created mask 
-                #cv2.circle(image, (x1, y1), 10, (0, 55, 0), 10)
-                #cv2.circle(image, (x2, y2), 10, (0, 55, 0), 10)
-                cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 5)
+        for x1, y1, x2, y2 in left_line_coords:
+            # Draw the line on the created mask 
+            #cv2.circle(image, (x1, y1), 10, (0, 55, 0), 10)
+            #cv2.circle(image, (x2, y2), 10, (0, 55, 0), 10)
+            cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 5)
             
-            cv2.imshow('Lines segmentation ',image)
-            cv2.waitKey(0)
+        cv2.imshow('Lane Lines segmentation ',image)
+        cv2.waitKey(0)
             
         #skyview_img = warp_perspective(image)
         #cv2.imshow('exp',skyview_img)
@@ -186,19 +204,20 @@ def detect(model,device,source,img_size=640,conf_thres=0.5,iou_thres=0.45):
 
         #print(np.unique(ll_seg_mask))
 
-        img_det = show_seg_result(img_det, (da_seg_mask, ll_seg_mask), _, _, is_demo=True)
-        #cv2.imshow("img_det",img_det)
-        #cv2.waitKey(0)
-        #print(img_det[480,640])
+    img_det = show_seg_result(img_det, (da_seg_mask, ll_seg_mask), _, _, is_demo=True)
+    print(len(det))
+    #cv2.imshow("img_det",img_det)
+    #cv2.waitKey(0)
+    #print(img_det[480,640])
 
-        if len(det):
-            det[:,:4] = scale_coords(img.shape[2:],det[:,:4],img_det.shape).round()
-            #print(det.shape)
-            for *xyxy,conf,cls in reversed(det):
-                label_det_pred = f'{names[int(cls)]} {conf:.2f}'
-                plot_one_box(xyxy, img_det , label=label_det_pred, color=colors[int(cls)], line_thickness=2)
-            cv2.imshow('YOLOP', img_det)
-            cv2.waitKey(0)  # 1 millisecond
+    if len(det):
+        det[:,:4] = scale_coords(img.shape[2:],det[:,:4],img_det.shape).round()
+        #print(det.shape)
+        for *xyxy,conf,cls in reversed(det):
+            label_det_pred = f'{names[int(cls)]} {conf:.2f}'
+            plot_one_box(xyxy, img_det , label=label_det_pred, color=colors[int(cls)], line_thickness=2)
+        cv2.imshow('YOLOP', img_det)
+        cv2.waitKey(0)  # 1 millisecond
         #if dataset.mode == 'images':
             #cv2.imwrite(save_path,img_det)
 

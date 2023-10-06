@@ -27,7 +27,7 @@ def yolop(pretrained=True, device="cpu",image=None, conf_thres=0.5, iou_thres=0.
     if not image:
         return model
     else:
-        detect(model=model,device=device,source=image,conf_thres=conf_thres,iou_thres=iou_thres)
+        detect(model=model,device=device,img=image,conf_thres=conf_thres,iou_thres=iou_thres)
 
 #def hub_detect(model,device):
     
