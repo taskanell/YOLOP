@@ -71,7 +71,7 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
         bs = 1  # batch_size
         print ('HERE')
     '''
-    img = cv2.imread(img, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
+    #img = cv2.imread(img, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
     img = np.ascontiguousarray(img)
 
     # Get names and colors
@@ -84,8 +84,8 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
     t0 = time.time()
 
     #vid_path, vid_writer = None, None
-    #img = torch.zeros((1, 3, opt.img_size, opt.img_size), device=device)  # init img
-    _ = model(img.half() if half else img) if device.type != 'cpu' else None  # run once
+    im = torch.zeros((1, 3, img_size, img_size), device=device)  # init img
+    _ = model(im.half() if half else im) if device.type != 'cpu' else None  # run once
     model.eval()
 
     inf_time = AverageMeter()
@@ -151,8 +151,8 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
     #ll_seg_mask, lane_right, lane_left = connect_lane(ll_seg_mask)
     ll_seg_mask, right_lane, left_lane = connect_lane(ll_seg_mask)
     if len(left_lane) and len(right_lane):
-        print(np.array(right_lane))
-        print(np.array(left_lane))
+        #print(np.array(right_lane))
+        #print(np.array(left_lane))
         #print(image.shape)
         right_line_coords = map_coordinates(image,np.array(right_lane))
 
@@ -164,14 +164,14 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
 
         #right_lane_coords = map_coordinates(image,np.array([-0.82, 506.27]))
         left_line_coords = map_coordinates(image,np.array(left_lane))
-        print(right_line_coords)
-        print(left_line_coords)
+        #print(right_line_coords)
+        #print(left_line_coords)
         x1_ll , y1 , x2_ll, y2 = left_line_coords[0]
         x1_rl , y1 , x2_rl, y2 = right_line_coords[0]
         #print(x1_ll,x2_ll)
 
         low_mid = (x1_ll + x1_rl) / 2
-        print(low_mid)
+        #print(low_mid)
         up_mid = (x2_ll + x2_rl) / 2
 
         
@@ -195,9 +195,9 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
             #cv2.circle(image, (x2, y2), 10, (0, 55, 0), 10)
             cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 5)
             
-        cv2.imshow('Lane Lines segmentation ',image)
-        cv2.waitKey(0)
-            
+        #cv2.imshow('Lane Lines segmentation ',image)
+        #cv2.waitKey(1)
+        
         #skyview_img = warp_perspective(image)
         #cv2.imshow('exp',skyview_img)
         #cv2.waitKey(0)
@@ -211,13 +211,13 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
     #print(img_det[480,640])
 
     if len(det):
-        det[:,:4] = scale_coords(img.shape[2:],det[:,:4],img_det.shape).round()
+        #det[:,:4] = scale_coords(img.shape[2:],det[:,:4],img_det.shape).round()
         #print(det.shape)
         for *xyxy,conf,cls in reversed(det):
             label_det_pred = f'{names[int(cls)]} {conf:.2f}'
             plot_one_box(xyxy, img_det , label=label_det_pred, color=colors[int(cls)], line_thickness=2)
         cv2.imshow('YOLOP', img_det)
-        cv2.waitKey(0)  # 1 millisecond
+        cv2.waitKey(1)  # 1 millisecond
         #if dataset.mode == 'images':
             #cv2.imwrite(save_path,img_det)
 

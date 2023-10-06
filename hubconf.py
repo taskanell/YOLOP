@@ -8,7 +8,7 @@ from pathlib import Path
 from tools.yolop_detect import detect
 import os
 
-def yolop(pretrained=True, device="cpu",image=None, conf_thres=0.5, iou_thres=0.45):
+def yolop(pretrained=True, device="cpu",image=None, mod=None, conf_thres=0.5, iou_thres=0.45):
     """Creates YOLOP model
     Arguments:
         pretrained (bool): load pretrained weights into the model
@@ -18,16 +18,18 @@ def yolop(pretrained=True, device="cpu",image=None, conf_thres=0.5, iou_thres=0.
         YOLOP pytorch model
     """
     device = select_device(device = device)
-    model = get_net(cfg)
-    if pretrained:
-        path = os.path.join(Path(__file__).resolve().parent, "weights/End-to-end.pth")
-        checkpoint = torch.load(path, map_location= device)
-        model.load_state_dict(checkpoint['state_dict'])
-    model = model.to(device)
-    if not image:
+    if image is None:
+        #device = select_device(device = device)
+        model = get_net(cfg)
+        if pretrained:
+           path = os.path.join(Path(__file__).resolve().parent, "weights/End-to-end.pth")
+           checkpoint = torch.load(path, map_location= device)
+           model.load_state_dict(checkpoint['state_dict'])
+        model = model.to(device)
         return model
     else:
-        detect(model=model,device=device,img=image,conf_thres=conf_thres,iou_thres=iou_thres)
+        with torch.no_grad():
+            detect(model=mod,device=device,img=image,conf_thres=conf_thres,iou_thres=iou_thres)
 
 #def hub_detect(model,device):
     

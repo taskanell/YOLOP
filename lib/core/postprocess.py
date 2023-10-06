@@ -126,8 +126,8 @@ def fitlane(mask, sel_labels, labels, stats):
     neg_thres = 1000
     pos_thres = -1000
 
-    print(sel_labels)
-    print(np.unique(labels))
+    #print(sel_labels)
+    #print(np.unique(labels))
     for label_group in sel_labels:
         states = [stats[k] for k in label_group]
         x, y, w, h, _ = states[0]
@@ -227,7 +227,6 @@ def fitlane(mask, sel_labels, labels, stats):
             draw_points = (np.asarray([draw_x, draw_y]).T).astype(np.int32)
             cv2.polylines(mask, [draw_points], False, 1, thickness=15)
     #print(mask.shape)
-
     return mask, right_line, left_line
 
 
@@ -287,20 +286,20 @@ def connect_lane(image, shadow_height=0):
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     else:
         gray_image = image
-        print(np.unique(gray_image))
+        #print(np.unique(gray_image))
         #cv2.imshow('gray',gray_image)
         #cv2.waitKey(0)
     if shadow_height:
         image[:shadow_height] = 0
     mask = np.zeros((image.shape[0], image.shape[1]), np.uint8)
     
-    polygon = np.array([[
-    (int(image.shape[1]*0.20), image.shape[0]),              # Bottom-left point
-    (int(image.shape[1]*0.46),  int(image.shape[0]*0.72)),   # Top-left point
-    (int(image.shape[1]*0.58), int(image.shape[0]*0.72)),    # Top-right point
-    (int(image.shape[1]*0.85), image.shape[0]),              # Bottom-right point
-    ]], np.int32)
-    cv2.fillPoly(mask, polygon, 255)
+    #Spolygon = np.array([[
+    #(int(image.shape[1]*0.20), image.shape[0]),              # Bottom-left point
+    #(int(image.shape[1]*0.46),  int(image.shape[0]*0.72)),   # Top-left point
+    #(int(image.shape[1]*0.58), int(image.shape[0]*0.72)),    # Top-right point
+    #(int(image.shape[1]*0.85), image.shape[0]),              # Bottom-right point
+    #]], np.int32)
+    #cv2.fillPoly(mask, polygon, 255)
     #cv2.imshow('mask',mask)
     #cv2.waitKey(0)
     
