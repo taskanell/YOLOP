@@ -2,6 +2,7 @@
 
 from threading import Thread, Event
 from carla import VehicleControl
+import argparse
 import os
 #os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:100"
 import carla
@@ -272,8 +273,9 @@ class RosControl(object):
             #rospy.loginfo ("image taken")
             result = model(self.rgb_image)
             self.rgb_image = None
-            #break
             img = np.squeeze(result.render())
+            width = img.shape[1]
+            height = img.shape[0]
             result = np.array(result.xyxy[0].cpu())
             #for r in result:
                 #print (r)
@@ -281,13 +283,16 @@ class RosControl(object):
             result = result[:,2:4]
             result [:,0] =  result [:,0] - widths/2
             result = result.astype(np.int64)
-            result = result -1    ##HAVE TO CHECK THIS
+            #print(result)
+            if np.size(result) != 0:
+               result[0][0] = max(0, min(result[0][0], height - 1))
+               result[0][1] = max(0, min(result[0][1], width - 1))
+            #print(result)
+            #result = result -1    ##HAVE TO CHECK THIS
             img_result = np.flip (result,axis=1)
             img_result = tuple(map(tuple, img_result))
             result = tuple(map(tuple, result))
 
-            width = img.shape[1]
-            height = img.shape[0]
             for r in result:
                 #print (r) 
                 cv2.line(img, (width//2,height), r ,color = (255, 0, 0), thickness=2)
@@ -424,35 +429,37 @@ def main():
     #src = '/media/cinnamon/Files/yolov5'
     #src = '/home/ghatz/git/yolov5'
     #src = '/home/iccs/git/yolov5'
-    src = '/home/iccs/git/YOLOP'
+    src = '/home/iccs/git/' + opt.model
     #model = YOLO('yolov8n')
     #model = YOLO("yolov8n.pt")
 
     #model = torch.hub.load(src,'custom','yolov5s.pt', source ='local')
-    model = torch.hub.load(src,'yolop', source ='local', device='0')
-    yolop = True
+    #model = torch.hub.load(src,'custom', opt.model + str('s.pt') , source ='local', device='0')
+    #yolop = True
     #model.imgsz = (480,480)
-    model.conf = 0.5
+    #model.conf = 0.5
     #model.iou = 0.1
-    model.classes = [1,2,3,5,7]
+    #model.classes = [1,2,3,5,7]
     #model.cuda()
     #rospy.loginfo(model.device)
-    model.device = torch.device(0)
+    #model.device = torch.device(0)
     #cv_bridge = CvBridge()
 
     try:
 
         ros_control_node = RosControl()
 
-
-
         rospy.on_shutdown(ros_control_node.destroy)
 
-        if yolop==False:
+        if opt.model=='yolov5':
+            model = torch.hub.load(src,'custom', opt.model + str('s.pt') , source ='local', device=opt.device)
+            model.conf = 0.5
+            model.cuda()
             while not rospy.is_shutdown():
                ros_control_node.control_vehicle()
                rospy.sleep(0.01)
         else:
+            model = torch.hub.load(src, opt.model, source ='local', device=opt.device)
             while not rospy.is_shutdown():
                ros_control_node.control_vehicle_yolop()
                rospy.sleep(0.01)
@@ -464,4 +471,8 @@ def main():
         pass
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model', type=str, default='yolov5', help='yolo model name')
+    parser.add_argument('--device', type=str, default='0', help='device name')
+    opt = parser.parse_args()
     main()
