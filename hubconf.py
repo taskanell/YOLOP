@@ -18,7 +18,7 @@ def yolop(pretrained=True, device="cpu",image=None, mod=None, conf_thres=0.5, io
         YOLOP pytorch model
     """
     device = select_device(device = device)
-    if image is None:
+    if image is None or mod is None:
         #device = select_device(device = device)
         model = get_net(cfg)
         if pretrained:

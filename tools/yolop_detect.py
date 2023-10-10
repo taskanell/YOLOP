@@ -149,6 +149,7 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
     # Lane line post-processing
     ll_seg_mask = morphological_process(ll_seg_mask, kernel_size=7, func_type=cv2.MORPH_CLOSE)
     #ll_seg_mask, lane_right, lane_left = connect_lane(ll_seg_mask)
+    print(len(connect_lane(ll_seg_mask)))
     ll_seg_mask, right_lane, left_lane = connect_lane(ll_seg_mask)
     if len(left_lane) and len(right_lane):
         #print(np.array(right_lane))
@@ -205,7 +206,7 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
         #print(np.unique(ll_seg_mask))
 
     img_det = show_seg_result(img_det, (da_seg_mask, ll_seg_mask), _, _, is_demo=True)
-    print(len(det))
+    #print(len(det))
     #cv2.imshow("img_det",img_det)
     #cv2.waitKey(0)
     #print(img_det[480,640])
@@ -216,8 +217,8 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
         for *xyxy,conf,cls in reversed(det):
             label_det_pred = f'{names[int(cls)]} {conf:.2f}'
             plot_one_box(xyxy, img_det , label=label_det_pred, color=colors[int(cls)], line_thickness=2)
-        cv2.imshow('YOLOP', img_det)
-        cv2.waitKey(1)  # 1 millisecond
+    cv2.imshow('YOLO', image)
+    cv2.waitKey(1)  # 1 millisecond
         #if dataset.mode == 'images':
             #cv2.imwrite(save_path,img_det)
 

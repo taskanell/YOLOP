@@ -168,7 +168,7 @@ def fitlane(mask, sel_labels, labels, stats):
             samples_y = np.array(samples_y)
             samples_y = samples_y[samples_x != -1]
             samples_x = samples_x[samples_x != -1]
-            func = np.polyfit(samples_y, samples_x, 2)
+            func = np.polyfit(samples_y, samples_x, 1)
             
             #print(func)
 
@@ -199,7 +199,7 @@ def fitlane(mask, sel_labels, labels, stats):
             samples_y = samples_y[samples_y != -1]
             try:
                 #print('ALSO HERE')
-                func = np.polyfit(samples_x, samples_y, 2)
+                func = np.polyfit(samples_x, samples_y, 1)
 
                 #print(func)
                 #print('Here 2-',counter)
