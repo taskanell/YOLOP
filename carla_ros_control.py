@@ -4,7 +4,6 @@ from threading import Thread, Event
 from carla import VehicleControl
 import argparse
 import os
-#os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:100"
 import carla
 
 #import ros_compatibility as roscomp
@@ -50,8 +49,6 @@ class RosControl(object):
         self.control_commands_thread = Thread(target=self.control_commands)
 
         self.cv_bridge = CvBridge()
-        #self.counter_d = 0
-        #self.counter_r = 0
         self.counter = 0
         #self.rate = rospy.Rate(0.001)
 
@@ -69,17 +66,7 @@ class RosControl(object):
             "/carla/{}/ego_switch_to_autopilot".format(self.role_name),
             Empty,
             self.trigger_ros_control)
-        '''
-        self.front_rgb_image_subscriber = rospy.Subscriber(
-            "/carla/{}/front/RgbCamera/image".format(self.role_name),
-            Image,
-            self.get_rgb_image)
-        
-        self.front_depth_image_subscriber = rospy.Subscriber(
-            "/carla/{}/front/DepthCamera/image".format(self.role_name),
-            Image,
-            self.get_depth_image)
-        '''
+      
         self.front_rgb_image_subscriber = message_filters.Subscriber("/carla/{}/front/RgbCamera/image".format(self.role_name),Image)
 
         self.front_depth_image_subscriber = message_filters.Subscriber("/carla/{}/front/DepthCamera/image".format(self.role_name),Image)
@@ -188,8 +175,6 @@ class RosControl(object):
             cv2.waitKey(1)
 
             for i,res in enumerate(img_result):
-                #rospy.loginfo(self.rgb_stamp == self.depth_stamp)
-                #rospy.loginfo(self.rgb_stamp == self.ego_velocity_stamp)
                 #print('Num:{}'.format(len(img_result)))
                 rospy.loginfo('Frame{}: Object{}: Distance:{}'.format(self.counter,i+1,self.depth_image[res]))
                 #print('Velocity: {}'.format(self.ego_velocity))
