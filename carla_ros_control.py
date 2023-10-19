@@ -107,64 +107,8 @@ class RosControl(object):
             self.autopilot_enabled = False
         else:
             self.autopilot_enabled = True
-            self.first_throttle = True
-
-    
-    '''
-    def get_rgb_image(self,img_msg):
-
-        try:
-            rgb_image = cv_bridge.imgmsg_to_cv2(img_msg,"passthrough")
-        except CvBridgeError as e:
-            rospy.logerr("Error: {}".format(e))
-        
-        self.counter_r += 1
-        #results = model(cv_image,conf=0.5)
-        #an_frame = results[0].plot()
-        result=cv2.imwrite(r'/media/cinnamon/Files/ros_images/ros_image_rgb{}.png'.format(self.counter_r), rgb_image)
-        if result == True:
-            rospy.loginfo('Rgb saved successfully')
-        else:
-            rospy.loginfo('Error in saving file')
-        #cv_img_resized = cv2.resize(cv_image, (int(cv_image.shape[0]/2),int(cv_image.shape[0]/2)))
-        #gray = cv2.cvtColor(cv_img_resized,cv2.COLOR_BGR2GRAY)
-        #corners = cv2.goodFeaturesToTrack(gray,50,0.01,10)
-        #for i in corners:
-           #x,y = i.ravel()
-            #frame = cv2.circle(cv_img_resized,(int(x),int(y)),1,200,-1)
-        #cv2.namedWindow('Rgb Camera')
-        #cv2.imshow("Rgb Camera", rgb_image)
-        #rospy.loginfo(cv_image.shape)
-        #cv2.waitKey(1)
-
-    def get_depth_image(self,img_msg):
-        
-        try:
-            depth_image = cv_bridge.imgmsg_to_cv2(img_msg,"passthrough")
-        except CvBridgeError as e:
-            rospy.logerr("Error: {}".format(e))
-        
-        self.counter_d += 1
-        #results = model(cv_image,conf=0.5)
-        #an_frame = results[0].plot()
-        result=cv2.imwrite(r'/media/cinnamon/Files/ros_images/ros_image_dep{}.png'.format(self.counter_d), depth_image)
-        if result == True:
-            rospy.loginfo('Depth saved successfully')
-        else:
-            rospy.loginfo('Error in saving file')
-        #cv_img_resized = cv2.resize(cv_image, (int(cv_image.shape[0]/2),int(cv_image.shape[0]/2)))
-        #gray = cv2.cvtColor(cv_img_resized,cv2.COLOR_BGR2GRAY)
-        #corners = cv2.goodFeaturesToTrack(gray,50,0.01,10)
-        #for i in corners:
-           #x,y = i.ravel()
-            #frame = cv2.circle(cv_img_resized,(int(x),int(y)),1,200,-1)
-
-        #cv2.namedWindow('Depth Camera')
-        #cv2.imshow("Depth Camera", depth_image)
-        #rospy.loginfo(cv_image.shape)
-        #cv2.waitKey(1)
-    '''
-    
+            self.first_throttle = True 
+   
     def get_rgb_depth_camera(self,rgb_img_msg,depth_img_msg,status_msg):
         
         self.counter+= 1
@@ -174,15 +118,6 @@ class RosControl(object):
         except CvBridgeError as e:
             rospy.logerr("Error: {}".format(e))
         
-        #rospy.loginfo(self.depth_image[(308,193)])
-        
-        
-        # result=cv2.imwrite(r'/media/cinnamon/Files/ros_images/ros_image_dep{}.jpg'.format(self.counter), self.depth_image)
-        # if result == False:
-            #rospy.loginfo('Depth saved successfully')
-        #else:
-            # rospy.loginfo('Error in saving file')
-        
         try:
             self.rgb_image = self.cv_bridge.imgmsg_to_cv2(rgb_img_msg,"rgb8")
         except CvBridgeError as e:
@@ -190,47 +125,9 @@ class RosControl(object):
         
         self.ego_velocity = 3.6 * status_msg.velocity
 
-        # result=cv2.imwrite(r'/media/cinnamon/Files/ros_images/ros_image_rgb{}.jpg'.format(self.counter), self.rgb_image)
-        # if result == False:
-            #rospy.loginfo('Rgb saved successfully')
-        #else:
-            # rospy.loginfo('Error in saving file')
-        
-        #rgb_image = np.asarray(rgb_image)
-        # print(f'model = {model}')
-        #print(rgb_image.shape)
-        #t1= time.time()
-        #results = model(rgb_image)
-        #result = model('/home/iccs/Downloads/ros_image_rgb46.png')
-        #print(f'time = {time.time()-t1}')
-        #an_frame = results.print()
-        #results.print()
-        #cv2.imshow('rgb',an_frame)
-        #cv2.waitKey(1)
-
-        
-        '''
-        result=cv2.imwrite(r'/run/ros_imgs/ros_image_det{}.png'.format(self.counter), an_frame)
-        if result == False:
-            #rospy.loginfo('Rgb saved successfully')
-        #else:
-            rospy.loginfo('Error in saving file')
-        '''  
-        #rospy.loginfo(rgb_img_msg.header.stamp == depth_img_msg.header.stamp)
-
         self.ego_velocity_stamp = status_msg.header.stamp
         self.rgb_stamp = rgb_img_msg.header.stamp
         self.depth_stamp = depth_img_msg.header.stamp
-
-        #rospy.loginfo(depth_image)
-        #cv2.imshow('rgb',rgb_image)
-        #depth_image = cv2.cvtColor(depth_image,cv2.COLOR_GRAY2RGB)
-        #cv2.imshow('depth',depth_image)
-        #cv2.waitKey(1)
-
-#    def update_speed(self):
-
-
 
     def get_autopilot_status(self, status):
         """
@@ -260,15 +157,6 @@ class RosControl(object):
     
     def control_vehicle(self):
         
-        #if os.path.exists(r'/run/ros_imgs/ros_image_rgb{}.jpg'.format(self.counter)):
-            #image = cv2.imread(r'/run/ros_imgs/ros_image_rgb{}.png'.format(self.counter))
-            #print(image)
-            #results = model(rgb_image)
-        #t1= time.time()
-        #while (True):
-            #image = cv2.imread(r'/run/ros_imgs/ros_image_rgb{}.jpg'.format(self.counter))
-        #print ("control started")
-        #print(self.counter)
         if self.rgb_image is not None:
             #rospy.loginfo ("image taken")
             result = model(self.rgb_image)
@@ -325,76 +213,12 @@ class RosControl(object):
                         self.distance_lower = True
                         self.control_commands_thread = Thread(target=self.control_commands)
                         self.control_commands_thread.start()
-                        #rospy.loginfo("Steer left")
-                        #self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(steer=-0.5,brake=0.0,throttle=0.0))
-                        #rospy.sleep(0.8)
-                        #t1= time.time()
-                        #rospy.loginfo("Steer")
-                        #self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(steer=-0.5,brake=0.0,throttle=0.0))
-                        #rospy.sleep(0.2)
-                        #while time.time() - t1 < 0.2:
-                            #rospy.loginfo(time.time() - t1 )
-                        #else:
-                        #rospy.loginfo("Started breaking")
-                        #self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(steer=0.0,brake=0.5,throttle=0.0))
-                        #rospy.loginfo("Steer right")
-                        #self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(steer=0.8,brake=0.0,throttle=0.0))
-                        #rospy.sleep(0.3)
-                        #rospy.loginfo("Throttle")
-                        #self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(steer=0.2,brake=0.0,throttle=0.5))
-                        #rospy.sleep(0.5)
-                        #rospy.loginfo("Break")
-                        #self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(steer=0.0,brake=1.0))
-                        #rospy.sleep(0.2)
-                        #self.control_commands_thread.join()
 
         else:
-            #rospy.loginfo("Can't take images")
             return
-                #print('None image: /run/ros_imgs/ros_image_rgb{}.png'.format(self.counter))
-        #print(f'time = {time.time()-t1}')
-        #cv2.imshow('YOLO', np.squeeze(result.render()))
-        #cv2.waitKey(1)
-        #result.print()
-        
-            #if self.autopilot_enabled.is_set():
-            #if self.autopilot_enabled is True:
+                
             '''
             if self.depth_image[res] < 5: #and abs(res[1]-width//2) < 100
-                    rospy.loginfo("Brake")
-                    self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(steer=-1.0,brake=0.0,throttle=0.0))
-                    #self.rate.sleep()
-                    self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(steer=0.0,brake=1.0))
-            #elif self.depth_image[res] < 2:
-                #rospy.loginfo("Brake")
-            '''
-
-            #rospy.loginfo(self.autopilot_enabled.is_set())
-            '''
-            rospy.loginfo("ROS control loop started")
-            rospy.sleep(2)
-                
-            rospy.loginfo("Throttle: 0.9")
-            self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(throttle=0.9,brake=0.0))
-            self.rate.sleep()
-        else:
-            return
-        if self.autopilot_enabled.is_set():
-            rospy.loginfo("Throttle: 0.7")
-            self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(throttle=0.7))
-            self.rate.sleep()
-        else:
-            return
-        if self.autopilot_enabled.is_set():
-            rospy.loginfo("Throttle: 0.5")
-            self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(throttle=0.5))
-            self.rate.sleep()
-        else:
-            return
-        if self.autopilot_enabled.is_set():
-            rospy.loginfo("Brake")
-            self.vehicle_control_publisher.publish(CarlaEgoVehicleControl(brake=1.0,throttle=0.0))
-            self.rate.sleep()
             '''
             
     def control_vehicle_yolop(self):
