@@ -21,7 +21,7 @@ def plot_img_and_mask(img, mask, index,epoch,save_dir):
     # plt.show()
     plt.savefig(save_dir+"/batch_{}_{}_seg.png".format(epoch,index))
 
-def show_seg_result(img, result, index, epoch, save_dir=None, is_ll=False,palette=None,is_demo=False,is_gt=False):
+def show_seg_result(img, result, index, epoch, lines_pixel_mask, save_dir=None, is_ll=False,palette=None,is_demo=False,is_gt=False):
     # img = mmcv.imread(img)
     # img = img.copy()
     # seg = result[0]
@@ -77,6 +77,16 @@ def plot_one_box(x, img, color=None, label=None, line_thickness=None):
     tl = line_thickness or round(0.0001 * (img.shape[0] + img.shape[1]) / 2) + 1  # line/font thickness
     color = color or [random.randint(0, 255) for _ in range(3)]
     c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
+    
+    width = int(x[2]-x[0])
+    
+    w = img.shape[1]
+    h = img.shape[0]
+    
+    p1 = int(x[0]+width/2)
+    
+    cv2.line(img,(w//2,h),(p1,int(x[3])),color=(255,0,0),thickness=2)
+    
     cv2.rectangle(img, c1, c2, color, thickness=tl, lineType=cv2.LINE_AA)
     # if label:
     #     tf = max(tl - 1, 1)  # font thickness

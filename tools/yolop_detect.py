@@ -147,9 +147,9 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
     ll_seg_mask = ll_seg_mask.int().squeeze().cpu().numpy()
     #print(ll_seg_mask.shape)
     # Lane line post-processing
-    ll_seg_mask = morphological_process(ll_seg_mask, kernel_size=7, func_type=cv2.MORPH_CLOSE)
+    ll_seg_mask = morphological_process(ll_seg_mask, kernel_size=7, func_type=cv2.MORPH_OPEN)
     #ll_seg_mask, lane_right, lane_left = connect_lane(ll_seg_mask)
-    print(len(connect_lane(ll_seg_mask)))
+    #print(len(connect_lane(ll_seg_mask)))
     ll_seg_mask, right_lane, left_lane = connect_lane(ll_seg_mask)
     if len(left_lane) and len(right_lane):
         #print(np.array(right_lane))
@@ -176,7 +176,7 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
         up_mid = (x2_ll + x2_rl) / 2
 
         
-
+#here
         cv2.circle(image, (int(low_mid), y1), 10, (0, 0, 100), 10)
         cv2.circle(image, (int(up_mid), y2), 10, (0, 0, 100), 10)
 
@@ -185,7 +185,7 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
             
         for x1, y1, x2, y2 in right_line_coords:
             # Draw the line on the created mask 
-            cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 5)
+            cv2.line(image, (x1, y1), (x2, y2), (0, 200, 0), 5)
             #cv2.circle(image, (x1, y1), 10, (0, 0, 100), 10)
             #cv2.circle(image, (x2, y2), 10, (0, 100, 0), 10)
             
@@ -195,7 +195,12 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
             #cv2.circle(image, (x1, y1), 10, (0, 55, 0), 10)
             #cv2.circle(image, (x2, y2), 10, (0, 55, 0), 10)
             cv2.line(image, (x1, y1), (x2, y2), (0, 255, 0), 5)
-            
+         
+        left_pixel_mask = np.all(image == (0,0,255), axis =-1)
+        right_pixel_mask = np.all(image == (0,0,200), axis =-1)
+        left_pixel_mask = left_pixel_mask.astype(np.uint8)
+        right_pixel_mask = right_pixel_mask.astype(np.uint8)
+        
         #cv2.imshow('Lane Lines segmentation ',image)
         #cv2.waitKey(1)
         
@@ -205,18 +210,21 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
 
         #print(np.unique(ll_seg_mask))
 
-    img_det = show_seg_result(img_det, (da_seg_mask, ll_seg_mask), _, _, is_demo=True)
-    #print(len(det))
-    #cv2.imshow("img_det",img_det)
-    #cv2.waitKey(0)
-    #print(img_det[480,640])
+        #img_det = show_seg_result(img_det, (da_seg_mask, ll_seg_mask), _, _, is_demo=True,lines_pixel_mask=(left_pixel_mask,right_pixel_mask))
+        #print(len(det))
+        #cv2.imshow("img_det",img_det)
+        #cv2.waitKey(1)
+        #print(img_det[480,640])
+    
+    bboxes = np.empty(shape=[0,4])
 
     if len(det):
         #det[:,:4] = scale_coords(img.shape[2:],det[:,:4],img_det.shape).round()
         #print(det.shape)
+        bboxes = reversed(det[:,:4]).cpu().numpy()
         for *xyxy,conf,cls in reversed(det):
             label_det_pred = f'{names[int(cls)]} {conf:.2f}'
-            plot_one_box(xyxy, img_det , label=label_det_pred, color=colors[int(cls)], line_thickness=2)
+            plot_one_box(xyxy, image , label=label_det_pred, color=colors[int(cls)], line_thickness=2)
     cv2.imshow('YOLO', image)
     cv2.waitKey(1)  # 1 millisecond
         #if dataset.mode == 'images':
@@ -241,6 +249,8 @@ def detect(model,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
     #print('Results saved to %s' % Path(opt.save_dir))
     print('Done. (%.3fs)' % (time.time() - t0))
     print('inf : (%.4fs/frame)   nms : (%.4fs/frame)' % (inf_time.avg,nms_time.avg))
+    #print(bboxes)
+    return bboxes
 
 
 

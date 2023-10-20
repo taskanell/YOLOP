@@ -29,7 +29,8 @@ def yolop(pretrained=True, device="cpu",image=None, mod=None, conf_thres=0.5, io
         return model
     else:
         with torch.no_grad():
-            detect(model=mod,device=device,img=image,conf_thres=conf_thres,iou_thres=iou_thres)
+            bboxes = detect(model=mod,device=device,img=image,conf_thres=conf_thres,iou_thres=iou_thres)
+            return bboxes
 
 #def hub_detect(model,device):
     
