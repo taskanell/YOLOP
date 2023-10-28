@@ -20,10 +20,30 @@ def plot_img_and_mask(img, mask, index,epoch,save_dir):
     plt.xticks([]), plt.yticks([])
     # plt.show()
     plt.savefig(save_dir+"/batch_{}_{}_seg.png".format(epoch,index))
+    
+def is_between_lines(x, y, line1_params, line2_params):
+    #print(len(line2_params))
+    if len(line2_params):
+        m1, c1 = line1_params
+        m2, c2 = line2_params
 
-def show_seg_result(img, result, index, epoch, lines_pixel_mask, save_dir=None, is_ll=False,palette=None,is_demo=False,is_gt=False):
+        #y1 = m1 * x + c1
+        #y2 = m2 * x + c2
+
+        x1 = (y - c1)/m1
+        x2 = (y - c2)/m2
+        
+        x1_array = np.array(x1)
+        x2_array = np.array(x2)
+
+        #return min(x1, x2) <= x <= max(x1, x2)
+        return np.logical_and(x1_array <= x, x <= x2_array)
+    else: 
+        return False
+
+def show_seg_result(img, result, index, epoch, pixel_mask, f_lines, sec_lines, save_dir=None, is_ll=False,palette=None,is_demo=False,is_gt=False):
     # img = mmcv.imread(img)
-    # img = img.copy()
+    image = np.copy(img)
     # seg = result[0]
     if palette is None:
         palette = np.random.randint(
@@ -42,13 +62,71 @@ def show_seg_result(img, result, index, epoch, lines_pixel_mask, save_dir=None, 
             color_seg[result == label, :] = color
     else:
         color_area = np.zeros((result[0].shape[0], result[0].shape[1], 3), dtype=np.uint8)
+        left_mask = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
+        right_mask = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
         
+        idxs = np.where(pixel_mask==1)
+        wan_ids = np.unique(idxs[0])
+        
+        #print(idxs)
+        
+        '''
+        for y in wan_ids:
+            for x in range(img.shape[1]):
+                if is_between_lines(x,y,tuple(f_lines[0]),tuple(sec_lines[0])):
+                   left_mask[y,x] = 1
+                if is_between_lines(x,y,tuple(f_lines[1]),tuple(sec_lines[1])):
+                   right_mask[y,x] = 1
+        '''
+        #INSTEAD OF FOR / TOO SLOW
+        
+        x_values = np.arange(img.shape[1])
+        y_values = np.arange(img.shape[0])
+        #print(y_values.shape)
+	
+        if len(wan_ids):
+          #print('True')
+          if len(sec_lines[0]):
+            left_mask = is_between_lines(x_values, y_values[:, np.newaxis], tuple(sec_lines[0]),tuple(f_lines[0]))
+            left_mask [:wan_ids[0],:] = 0
+            left_mask [wan_ids[-1]:,:] = 0
+          if len(sec_lines[1]):
+            right_mask = is_between_lines(x_values, y_values[:, np.newaxis], tuple(f_lines[1]), tuple(sec_lines[1]))
+            right_mask [:wan_ids[0],:] = 0
+            right_mask [wan_ids[-1]:,:] = 0  
+
+        #print(np.count_nonzero(left_mask==1))
+        #print(right_mask)
+                   
         # for label, color in enumerate(palette):
         #     color_area[result[0] == label, :] = color
 
-        color_area[result[0] == 1] = [0, 255, 0]
-        color_area[result[1] ==1] = [255, 0, 0]
-        color_seg = color_area
+          color_area[result[0] & left_mask == 1] = [0, 255, 0]
+          color_area[result[0] & right_mask == 1] = [0, 0, 255]
+        #color_area[result[0]==1] = [0, 255, 0]
+        
+        
+          all_right = np.count_nonzero(right_mask == 1)
+          all_left = np.count_nonzero(left_mask == 1)
+        
+          if all_right != 0:
+             right_lane_rate = np.count_nonzero(color_area[right_mask == 1]!=[0, 0, 255])/all_right
+             right_lane_condition = right_lane_rate < 0.45
+          else:
+             right_lane_condition = False
+           
+          if all_left != 0:
+             left_lane_rate = np.count_nonzero(color_area[left_mask == 1]!=[0, 255, 0])/all_left
+             left_lane_condition = left_lane_rate < 0.45
+          else:
+             left_lane_condition = False
+        else:   
+            left_lane_condition = False
+            right_lane_condition = False
+        #color_area[y_ar[(len(y_ar)-1)//2:],x_ar[(len(y_ar)-1)//2:],:] = [0,0,155]
+        
+       
+    color_seg = color_area
 
     # convert to BGR
     color_seg = color_seg[..., ::-1]
@@ -58,7 +136,7 @@ def show_seg_result(img, result, index, epoch, lines_pixel_mask, save_dir=None, 
     # img = img * 0.5 + color_seg * 0.5
     img = img.astype(np.uint8)
     #img = cv2.resize(img, (1280,720), interpolation=cv2.INTER_LINEAR)
-
+    '''
     if not is_demo:
         if not is_gt:
             if not is_ll:
@@ -70,32 +148,54 @@ def show_seg_result(img, result, index, epoch, lines_pixel_mask, save_dir=None, 
                 cv2.imwrite(save_dir+"/batch_{}_{}_da_seg_gt.png".format(epoch,index), img)
             else:
                 cv2.imwrite(save_dir+"/batch_{}_{}_ll_seg_gt.png".format(epoch,index), img)  
-    return img
+    '''
+    return img,left_lane_condition,right_lane_condition
+    #return img,False, False
 
-def plot_one_box(x, img, color=None, label=None, line_thickness=None):
+
+def check_box_lane_localization(x,img,cur_lane_lines=()):
+	
+   c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
+    
+   width = int(x[2]-x[0])
+    
+   w = img.shape[1]
+   h = img.shape[0]
+    
+   p1 = int(x[0]+width/2)
+    
+   cv2.line(img,(w//2,h),(p1,int(x[3])),color=(0,0,255),thickness=2)
+	
+   if len(cur_lane_lines):
+       if is_between_lines(p1,int(x[3]),tuple(cur_lane_lines[0]),tuple(cur_lane_lines[1])):
+          print("IN LANE",p1)
+          return True,c1,c2
+       else:
+          print("OUT OF LANE",p1)
+          return False,c1,c2
+   else:
+	   return None,c1,c2
+	
+def plot_one_box(x, img, color=None, label=None, line_thickness=None,cur_lane_lines=()):
     # Plots one bounding box on image img
     tl = line_thickness or round(0.0001 * (img.shape[0] + img.shape[1]) / 2) + 1  # line/font thickness
     color = color or [random.randint(0, 255) for _ in range(3)]
-    c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
-    
-    width = int(x[2]-x[0])
-    
-    w = img.shape[1]
-    h = img.shape[0]
-    
-    p1 = int(x[0]+width/2)
-    
-    cv2.line(img,(w//2,h),(p1,int(x[3])),color=(255,0,0),thickness=2)
-    
-    cv2.rectangle(img, c1, c2, color, thickness=tl, lineType=cv2.LINE_AA)
-    # if label:
-    #     tf = max(tl - 1, 1)  # font thickness
-    #     t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
-    #     c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
-    #     cv2.rectangle(img, c1, c2, color, -1, cv2.LINE_AA)  # filled
-    #     print(label)
-        # cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
 
+    res = check_box_lane_localization(x,img,cur_lane_lines)
+    
+    cv2.rectangle(img, res[1], res[2], color, thickness=tl, lineType=cv2.LINE_AA)
+    
+    '''      
+    if label:
+       tf = max(tl - 1, 1)  # font thickness
+       t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
+       c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+       cv2.rectangle(img, c1, c2, color, tf, cv2.LINE_AA)  # filled
+       #print(label)
+       cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+    '''
+    
+    return res[0]
 
 if __name__ == "__main__":
     pass

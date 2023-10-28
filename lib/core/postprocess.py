@@ -125,6 +125,7 @@ def fitlane(mask, sel_labels, labels, stats):
     H, W = mask.shape
     neg_thres = 1000
     pos_thres = -1000
+    lines = []
 
     #print(sel_labels)
     #print(np.unique(labels))
@@ -152,6 +153,7 @@ def fitlane(mask, sel_labels, labels, stats):
         samples_x_line = samples_x_line[samples_y_line != -1]
         samples_y_line = samples_y_line[samples_y_line != -1]
         func_line = np.polyfit(samples_x_line, samples_y_line, 1)
+        lines.append(func_line)
         
         if func_line[0] < 0:
             if func_line[0] <= neg_thres:
@@ -161,7 +163,7 @@ def fitlane(mask, sel_labels, labels, stats):
                 if func_line[0] >= pos_thres:
                     pos_thres = func_line[0]
                     right_line = func_line  
-
+        '''
         if if_y(samples_x):
             samples_x = [int(np.mean(sample_x)) if len(sample_x) else -1 for sample_x in samples_x]
             samples_x = np.array(samples_x)
@@ -226,8 +228,10 @@ def fitlane(mask, sel_labels, labels, stats):
                         # draw_x = draw_x[draw_x < W]
             draw_points = (np.asarray([draw_x, draw_y]).T).astype(np.int32)
             cv2.polylines(mask, [draw_points], False, 1, thickness=15)
+    '''
     #print(mask.shape)
-    return mask, right_line, left_line
+    #return mask, right_line, left_line, lines
+    return right_line, left_line, lines
 
 
 def map_coordinates(frame, parameters):

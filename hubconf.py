@@ -1,6 +1,7 @@
 # YOLOP by hustvl, MIT License
 dependencies = ['torch']
 import torch
+import time
 from lib.utils.utils import select_device
 from lib.config import cfg
 from lib.models import get_net
@@ -8,7 +9,7 @@ from pathlib import Path
 from tools.yolop_detect import detect
 import os
 
-def yolop(pretrained=True, device="cpu",image=None, mod=None, conf_thres=0.5, iou_thres=0.45):
+def yolop(pretrained=True, device="cpu",image=None, mod=None, mod2=None,conf_thres=0.5, iou_thres=0.45):
     """Creates YOLOP model
     Arguments:
         pretrained (bool): load pretrained weights into the model
@@ -29,8 +30,10 @@ def yolop(pretrained=True, device="cpu",image=None, mod=None, conf_thres=0.5, io
         return model
     else:
         with torch.no_grad():
-            bboxes = detect(model=mod,device=device,img=image,conf_thres=conf_thres,iou_thres=iou_thres)
-            return bboxes
+            #t0 = time.time()
+            res = detect(model=mod,model_y5=mod2,device=device,img=image,conf_thres=conf_thres,iou_thres=iou_thres)
+            #print('HUB TIME', time.time()-t0)
+            return res
 
 #def hub_detect(model,device):
     
