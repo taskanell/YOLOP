@@ -42,7 +42,7 @@ transform=transforms.Compose([
         ])
 
 
-def detect(model,model_y5,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45):
+def detect(model,model_y5,device,img,img_size=(1024),conf_thres=0.5,iou_thres=0.45):
 
     #logger, _, _ = create_logger(
         #cfg, cfg.LOG_DIR, 'demo')
@@ -128,6 +128,7 @@ def detect(model,model_y5,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45)
         total_time_y5.update(t2_y5-t1_y5,img.size(0))
         det = np.array(result.xyxy[0].cpu())
         img_det = np.squeeze(result.render())
+        #cv2.imshow('hi',img_det)
     else:
            # Apply NMS
         inf_out, _ = det_out
@@ -154,8 +155,8 @@ def detect(model,model_y5,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45)
     #tt = time.time() 
     #da_predict = da_seg_out[:, :, pad_h:(height-pad_h),pad_w:(width-pad_w)]
     da_predict = da_seg_out
-    da_seg_mask = torch.nn.functional.interpolate(da_predict, scale_factor=int(1/ratio), mode='bilinear')
-    _, da_seg_mask = torch.max(da_seg_mask, 1)
+    #da_seg_mask = torch.nn.functional.interpolate(da_predict, scale_factor=int(1/ratio), mode='bilinear')
+    _, da_seg_mask = torch.max(da_predict, 1)
     da_seg_mask = da_seg_mask.int().squeeze().cpu().numpy()
         #print(da_seg_mask.shape)
     da_seg_mask = morphological_process(da_seg_mask, kernel_size=7)
@@ -163,10 +164,11 @@ def detect(model,model_y5,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45)
         
     #ll_predict = ll_seg_out[:, :,pad_h:(height-pad_h),pad_w:(width-pad_w)]
     ll_predict = ll_seg_out
-    ll_seg_mask = torch.nn.functional.interpolate(ll_predict, scale_factor=int(1/ratio), mode='bilinear')
-    _, ll_seg_mask = torch.max(ll_seg_mask, 1)
+    #print('ll_predict',ll_predict)
+    #print(ll_predict.shape)
+    #ll_seg_mask = torch.nn.functional.interpolate(ll_predict, scale_factor=int(1/ratio), mode='bilinear')
+    _, ll_seg_mask = torch.max(ll_predict, 1)
     ll_seg_mask = ll_seg_mask.int().squeeze().cpu().numpy()
-    #print(ll_seg_mask.shape)
     # Lane line post-processing
     ll_seg_mask = morphological_process(ll_seg_mask, kernel_size=7, func_type=cv2.MORPH_OPEN)
     #ll_seg_mask, lane_right, lane_left = connect_lane(ll_seg_mask)
@@ -174,8 +176,10 @@ def detect(model,model_y5,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45)
     #if len(connect_lane(ll_seg_mask)) == 4:
        #ll_seg_mask, right_lane, left_lane, lines = connect_lane(ll_seg_mask)
     #if len(connect_lane(ll_seg_mask)) == 3:
+    t11 = time.time()
     lane_result = connect_lane(ll_seg_mask)
     #print("DA AND LL",time.time()-tt)
+    print("CONNECT_LANE",time.time()-t11)
     if len(lane_result) == 3:
         right_lane, left_lane, lines = lane_result
     else:
@@ -257,21 +261,21 @@ def detect(model,model_y5,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45)
         left_line_coords = map_coordinates(img_det,np.array(left_lane))
         #print(right_line_coords)
         #print(left_line_coords)
-        '''
+        
         x1_ll , y1 , x2_ll, y2 = left_line_coords[0]
         x1_rl , y1 , x2_rl, y2 = right_line_coords[0]
         #print(x1_ll,x2_ll)
 
         low_mid = (x1_ll + x1_rl) / 2
         #print(low_mid)
-        up_mid = (x2_ll + x2_rl) / 2
+        #up_mid = (x2_ll + x2_rl) / 2
 		
         
 #here   
         
-        cv2.circle(image, (int(low_mid), y1), 10, (0, 0, 100), 10)
-        cv2.circle(image, (int(up_mid), y2), 10, (0, 0, 100), 10)
-        '''
+        cv2.circle(img_det, (int(low_mid), y1), 10, (0, 0, 100), 10)
+        #cv2.circle(image, (int(up_mid), y2), 10, (0, 0, 100), 10)
+        
 
         # Unpack line by coordinates
             
@@ -352,10 +356,9 @@ def detect(model,model_y5,device,img,img_size=640,conf_thres=0.5,iou_thres=0.45)
                  bool_value = plot_one_box(xyxy, img_det , label=label_det_pred, color=colors[int(cls)], line_thickness=2, cur_lane_lines=cur_lane_lines)
                  bboxes_in_lane.append(bool_value)
     
-    print('POST PROCESS TIME',time.time()-tt)  
-    t11 = time.time()
+    print('PROCESS TIME:',time.time()-tt)  
+    
     cv2.imshow('YOLO', cv2.cvtColor(img_det, cv2.COLOR_BGR2RGB))
-    print("CV SHOW",time.time()-t11)
     #cv2.imshow('YOLO', img_det)
     cv2.waitKey(1)  # 1 millisecond
         #if dataset.mode == 'images':

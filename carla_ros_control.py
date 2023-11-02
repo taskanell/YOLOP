@@ -99,6 +99,7 @@ class RosControl(object):
     def get_rgb_depth_camera(self,rgb_img_msg,depth_img_msg,status_msg):
         
         self.counter+= 1
+        self.fps_count = 0
         #self.new_frame = True
         try:
             self.depth_image = self.cv_bridge.imgmsg_to_cv2(depth_img_msg,"passthrough")
@@ -109,6 +110,13 @@ class RosControl(object):
             self.rgb_image = self.cv_bridge.imgmsg_to_cv2(rgb_img_msg,"rgb8")
         except CvBridgeError as e:
             rospy.logerr("Error: {}".format(e))
+        
+        if self.fps_count == 0: 
+            first_time = time.time()
+        else if self.fps_count == 10:
+			fps = 10 / (time.time() - first_time) 
+			rospy.loginfo(f'FPS: {fps:.2f}')
+			self.fps_count = 0
         
         self.ego_velocity = 3.6 * status_msg.velocity
 

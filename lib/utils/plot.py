@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import cv2
 import numpy as np
 import random
-
+import time
 
 def plot_img_and_mask(img, mask, index,epoch,save_dir):
     classes = mask.shape[2] if len(mask.shape) > 2 else 1
@@ -40,11 +40,25 @@ def is_between_lines(x, y, line1_params, line2_params):
         return np.logical_and(x1_array <= x, x <= x2_array)
     else: 
         return False
+'''        
+def for_function(x,y,line1_params,line2_params):
+    if len(line2_params):
+        m1, c1 = line1_params
+        m2, c2 = line2_params
+    
+        x1 = (y - c1)/m1
+        x2 = (y - c2)/m2
+	
+        return min(x1, x2) <= x <= max(x1, x2)
+    else:
+        return False
+'''
 
 def show_seg_result(img, result, index, epoch, pixel_mask, f_lines, sec_lines, save_dir=None, is_ll=False,palette=None,is_demo=False,is_gt=False):
     # img = mmcv.imread(img)
-    image = np.copy(img)
+    #image = np.copy(img)
     # seg = result[0]
+    '''
     if palette is None:
         palette = np.random.randint(
                 0, 255, size=(3, 3))
@@ -61,39 +75,45 @@ def show_seg_result(img, result, index, epoch, pixel_mask, f_lines, sec_lines, s
         for label, color in enumerate(palette):
             color_seg[result == label, :] = color
     else:
-        color_area = np.zeros((result[0].shape[0], result[0].shape[1], 3), dtype=np.uint8)
-        left_mask = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
-        right_mask = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
+    '''
+    color_area = np.zeros((result[0].shape[0], result[0].shape[1], 3), dtype=np.uint8)
+    left_mask = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
+    right_mask = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
         
-        idxs = np.where(pixel_mask==1)
-        wan_ids = np.unique(idxs[0])
+    idxs = np.where(pixel_mask==1)
+    wan_ids = np.unique(idxs[0])
         
         #print(idxs)
-        
-        '''
-        for y in wan_ids:
-            for x in range(img.shape[1]):
-                if is_between_lines(x,y,tuple(f_lines[0]),tuple(sec_lines[0])):
-                   left_mask[y,x] = 1
-                if is_between_lines(x,y,tuple(f_lines[1]),tuple(sec_lines[1])):
-                   right_mask[y,x] = 1
-        '''
+    '''    
+    t00 = time.time()
+    for y in wan_ids:
+       for x in range(img.shape[1]):
+            if for_function(x,y,tuple(f_lines[0]),tuple(sec_lines[0])):
+                left_mask[y,x] = 1
+            if for_function(x,y,tuple(f_lines[1]),tuple(sec_lines[1])):
+                right_mask[y,x] = 1
+    print('FOR LOOP exec time: %3fs' % (time.time()-t00))
+    '''
         #INSTEAD OF FOR / TOO SLOW
         
-        x_values = np.arange(img.shape[1])
-        y_values = np.arange(img.shape[0])
+    x_values = np.arange(img.shape[1])
+    y_values = np.arange(img.shape[0])
         #print(y_values.shape)
 	
-        if len(wan_ids):
-          #print('True')
-          if len(sec_lines[0]):
-            left_mask = is_between_lines(x_values, y_values[:, np.newaxis], tuple(sec_lines[0]),tuple(f_lines[0]))
-            left_mask [:wan_ids[0],:] = 0
-            left_mask [wan_ids[-1]:,:] = 0
-          if len(sec_lines[1]):
-            right_mask = is_between_lines(x_values, y_values[:, np.newaxis], tuple(f_lines[1]), tuple(sec_lines[1]))
-            right_mask [:wan_ids[0],:] = 0
-            right_mask [wan_ids[-1]:,:] = 0  
+    if len(wan_ids):
+       #print('True')
+       if len(sec_lines[0]):
+          #t0 = time.time()
+          left_mask = is_between_lines(x_values, y_values[:, np.newaxis], tuple(sec_lines[0]),tuple(f_lines[0]))
+          left_mask [:wan_ids[0],:] = 0
+          left_mask [wan_ids[-1]:,:] = 0
+          #t_f = time.time()-t0
+       if len(sec_lines[1]):
+          #t01 = time.time()
+          right_mask = is_between_lines(x_values, y_values[:, np.newaxis], tuple(f_lines[1]), tuple(sec_lines[1]))
+          right_mask [:wan_ids[0],:] = 0
+          right_mask [wan_ids[-1]:,:] = 0
+          #print('ALTERNATIVE SOLUTION exec time: %3fs' % (time.time()-t01+t_f))  
 
         #print(np.count_nonzero(left_mask==1))
         #print(right_mask)
@@ -101,28 +121,28 @@ def show_seg_result(img, result, index, epoch, pixel_mask, f_lines, sec_lines, s
         # for label, color in enumerate(palette):
         #     color_area[result[0] == label, :] = color
 
-          color_area[result[0] & left_mask == 1] = [0, 255, 0]
-          color_area[result[0] & right_mask == 1] = [0, 0, 255]
+       color_area[result[0] & left_mask == 1] = [0, 255, 0]
+       color_area[result[0] & right_mask == 1] = [0, 0, 255]
         #color_area[result[0]==1] = [0, 255, 0]
         
         
-          all_right = np.count_nonzero(right_mask == 1)
-          all_left = np.count_nonzero(left_mask == 1)
+       all_right = np.count_nonzero(right_mask == 1)
+       all_left = np.count_nonzero(left_mask == 1)
         
-          if all_right != 0:
-             right_lane_rate = np.count_nonzero(color_area[right_mask == 1]!=[0, 0, 255])/all_right
-             right_lane_condition = right_lane_rate < 0.45
-          else:
-             right_lane_condition = False
+       if all_right != 0:
+          right_lane_rate = np.count_nonzero(color_area[right_mask == 1]!=[0, 0, 255])/all_right
+          right_lane_condition = right_lane_rate < 0.45
+       else:
+          right_lane_condition = False
            
-          if all_left != 0:
-             left_lane_rate = np.count_nonzero(color_area[left_mask == 1]!=[0, 255, 0])/all_left
-             left_lane_condition = left_lane_rate < 0.45
-          else:
-             left_lane_condition = False
-        else:   
-            left_lane_condition = False
-            right_lane_condition = False
+       if all_left != 0:
+          left_lane_rate = np.count_nonzero(color_area[left_mask == 1]!=[0, 255, 0])/all_left
+          left_lane_condition = left_lane_rate < 0.45
+       else:
+          left_lane_condition = False
+    else:   
+       left_lane_condition = False
+       right_lane_condition = False
         #color_area[y_ar[(len(y_ar)-1)//2:],x_ar[(len(y_ar)-1)//2:],:] = [0,0,155]
         
        
@@ -168,10 +188,10 @@ def check_box_lane_localization(x,img,cur_lane_lines=()):
 	
    if len(cur_lane_lines):
        if is_between_lines(p1,int(x[3]),tuple(cur_lane_lines[0]),tuple(cur_lane_lines[1])):
-          print("IN LANE",p1)
+          #print("IN LANE",p1)
           return True,c1,c2
        else:
-          print("OUT OF LANE",p1)
+          #print("OUT OF LANE",p1)
           return False,c1,c2
    else:
 	   return None,c1,c2
