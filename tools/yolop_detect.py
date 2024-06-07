@@ -42,7 +42,7 @@ transform=transforms.Compose([
         ])
 
 
-def detect(model,model_y5,device,img,img_size=(1024),conf_thres=0.5,iou_thres=0.45):
+def detect(model,model_y5,device,img,img_size=(640),conf_thres=0.5,iou_thres=0.45,imshow_title='YOLO',draw_bb_line=True):
 
     #logger, _, _ = create_logger(
         #cfg, cfg.LOG_DIR, 'demo')
@@ -272,8 +272,9 @@ def detect(model,model_y5,device,img,img_size=(1024),conf_thres=0.5,iou_thres=0.
 		
         
 #here   
+        ##uncomment to see the center lane prediction
+        ##cv2.circle(img_det, (int(low_mid), y1), 10, (0, 0, 100), 10)
         
-        cv2.circle(img_det, (int(low_mid), y1), 10, (0, 0, 100), 10)
         #cv2.circle(image, (int(up_mid), y2), 10, (0, 0, 100), 10)
         
 
@@ -281,7 +282,10 @@ def detect(model,model_y5,device,img,img_size=(1024),conf_thres=0.5,iou_thres=0.
             
         for x1, y1, x2, y2 in right_line_coords:
             # Draw the line on the created mask 
-            cv2.line(img_det, (x1, y1), (x2, y2), (255, 255, 0), 5)
+            try:
+               cv2.line(img_det, (x1, y1), (x2, y2), (255, 255, 0), 5)
+            except cv2.error as e:
+               pass
             #cv2.circle(image, (x1, y1), 10, (0, 0, 100), 10)
             #cv2.circle(image, (x2, y2), 10, (0, 100, 0), 10)
             
@@ -290,7 +294,10 @@ def detect(model,model_y5,device,img,img_size=(1024),conf_thres=0.5,iou_thres=0.
             # Draw the line on the created mask 
             #cv2.circle(image, (x1, y1), 10, (0, 55, 0), 10)
             #cv2.circle(image, (x2, y2), 10, (0, 55, 0), 10)
-            cv2.line(img_det, (x1, y1), (x2, y2), (255, 255, 0), 5)
+            try:
+               cv2.line(img_det, (x1, y1), (x2, y2), (255, 255, 0), 5)
+            except cv2.error as e:
+               pass
          
          
         #FIX THAT, UNESSESARY BOTH OF THEM
@@ -353,12 +360,12 @@ def detect(model,model_y5,device,img,img_size=(1024),conf_thres=0.5,iou_thres=0.
              for *xyxy,conf,cls in reversed(det):
                  label_det_pred = f'{names[int(cls)]} {conf:.2f}'
                  #print('label',label_det_pred)
-                 bool_value = plot_one_box(xyxy, img_det , label=label_det_pred, color=colors[int(cls)], line_thickness=2, cur_lane_lines=cur_lane_lines)
+                 bool_value = plot_one_box(xyxy, img_det , label=label_det_pred, color=colors[int(cls)], line_thickness=2, cur_lane_lines=cur_lane_lines, draw_line=draw_bb_line)
                  bboxes_in_lane.append(bool_value)
     
     print('PROCESS TIME:',time.time()-tt)  
     
-    cv2.imshow('YOLO', cv2.cvtColor(img_det, cv2.COLOR_BGR2RGB))
+    cv2.imshow(imshow_title, cv2.cvtColor(img_det, cv2.COLOR_BGR2RGB))
     #cv2.imshow('YOLO', img_det)
     cv2.waitKey(1)  # 1 millisecond
         #if dataset.mode == 'images':

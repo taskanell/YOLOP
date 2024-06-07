@@ -6,10 +6,12 @@ from lib.utils.utils import select_device
 from lib.config import cfg
 from lib.models import get_net
 from pathlib import Path
-from tools.yolop_detect import detect
+import sys
+sys.path.append('/home/iccs/git/object_detection/yolop/tools')
+from yolop_detect import detect
 import os
 
-def yolop(pretrained=True, device="cpu",image=None, mod=None, mod2=None,conf_thres=0.5, iou_thres=0.45):
+def yolop(pretrained=True, device="cpu",image=None, mod=None, mod2=None,conf_thres=0.5, iou_thres=0.45, imshow_title='YOLO',draw_bb_line=True):
     """Creates YOLOP model
     Arguments:
         pretrained (bool): load pretrained weights into the model
@@ -31,7 +33,7 @@ def yolop(pretrained=True, device="cpu",image=None, mod=None, mod2=None,conf_thr
     else:
         with torch.no_grad():
             #t0 = time.time()
-            res = detect(model=mod,model_y5=mod2,device=device,img=image,conf_thres=conf_thres,iou_thres=iou_thres)
+            res = detect(model=mod,model_y5=mod2,device=device,img=image,conf_thres=conf_thres,iou_thres=iou_thres,imshow_title=imshow_title,draw_bb_line=draw_bb_line)
             #print('HUB TIME', time.time()-t0)
             return res
 

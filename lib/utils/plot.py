@@ -173,7 +173,7 @@ def show_seg_result(img, result, index, epoch, pixel_mask, f_lines, sec_lines, s
     #return img,False, False
 
 
-def check_box_lane_localization(x,img,cur_lane_lines=()):
+def check_box_lane_localization(x,img,cur_lane_lines=(),draw_line=True):
 	
    c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
     
@@ -183,8 +183,9 @@ def check_box_lane_localization(x,img,cur_lane_lines=()):
    h = img.shape[0]
     
    p1 = int(x[0]+width/2)
-    
-   cv2.line(img,(w//2,h),(p1,int(x[3])),color=(0,0,255),thickness=2)
+   
+   if draw_line:
+       cv2.line(img,(w//2,h),(p1,int(x[3])),color=(0,0,255),thickness=2)
 	
    if len(cur_lane_lines):
        if is_between_lines(p1,int(x[3]),tuple(cur_lane_lines[0]),tuple(cur_lane_lines[1])):
@@ -196,12 +197,12 @@ def check_box_lane_localization(x,img,cur_lane_lines=()):
    else:
 	   return None,c1,c2
 	
-def plot_one_box(x, img, color=None, label=None, line_thickness=None,cur_lane_lines=()):
+def plot_one_box(x, img, color=None, label=None, line_thickness=None,cur_lane_lines=(),draw_line=True):
     # Plots one bounding box on image img
     tl = line_thickness or round(0.0001 * (img.shape[0] + img.shape[1]) / 2) + 1  # line/font thickness
     color = color or [random.randint(0, 255) for _ in range(3)]
 
-    res = check_box_lane_localization(x,img,cur_lane_lines)
+    res = check_box_lane_localization(x,img,cur_lane_lines,draw_line)
     
     cv2.rectangle(img, res[1], res[2], color, thickness=tl, lineType=cv2.LINE_AA)
     
