@@ -199,11 +199,20 @@ def fitness(x):
     w = [0.0, 0.0, 0.1, 0.9]  # weights for [P, R, mAP@0.5, mAP@0.5:0.95]
     return (x[:, :4] * w).sum(1)
 
-def check_img_size(img_size, s=32):
+def check_img_size(img_size, s=32, warn=False):
     # Verify img_size is a multiple of stride s
-    new_size = make_divisible(img_size, int(s))  # ceil gs-multiple
-    if new_size != img_size:
-        print('WARNING: --img-size %g must be multiple of max stride %g, updating to %g' % (img_size, s, new_size))
+    #new_size = make_divisible(img_size, int(s))  # ceil gs-multiple
+    ## Adjustments for supporting not ONLY rectangle images
+    if isinstance(img_size, int):
+        new_size = make_divisible(img_size, s)
+        #if new_size != img_size:
+        if warn and new_size != img_size:
+            print('WARNING: --img-size %g must be multiple of max stride %g, updating to %g' % (img_size, s, new_size))
+    elif isinstance(img_size, tuple):
+        new_size = (make_divisible(img_size[0], s), make_divisible(img_size[1], s))
+        if warn and new_size != img_size:
+            print(f"WARNING: --img-size {(img_size[0], img_size[1])} is not multiple of {s}, updating to {(new_size[0], new_size[1])}")
+    
     return new_size
 
 def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
@@ -231,6 +240,22 @@ def clip_coords(boxes, img_shape):
 def make_divisible(x, divisor):
     # Returns x evenly divisible by divisor
     return math.ceil(x / divisor) * divisor
+
+def pad_image_to_stride(img, stride=32, warn=False):
+    h, w = img.shape[:2]
+    new_h, new_w = check_img_size((h, w), stride , warn=warn)  
+    if new_h == h and new_w == w:
+        return img
+
+    pad_bottom = new_h - h
+    pad_right = new_w - w
+
+    # Only pad bottom and right (top-left alignment)
+    padded_img = cv2.copyMakeBorder(
+        img, 0, pad_bottom, 0, pad_right,
+        borderType=cv2.BORDER_CONSTANT, value=0
+    )
+    return padded_img
 
 def xyxy2xywh(x):
     # Convert nx4 boxes from [x1, y1, x2, y2] to [x, y, w, h] where xy1=top-left, xy2=bottom-right

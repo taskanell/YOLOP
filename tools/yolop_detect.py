@@ -26,7 +26,7 @@ from lib.config import update_config
 from lib.utils.utils import create_logger, select_device, time_synchronized
 from lib.models import get_net
 from lib.dataset import LoadImages, LoadStreams
-from lib.core.general import non_max_suppression, scale_coords
+from lib.core.general import non_max_suppression, scale_coords, pad_image_to_stride
 from lib.utils import plot_one_box,show_seg_result
 from lib.utils.plot import check_box_lane_localization
 from lib.core.function import AverageMeter
@@ -42,11 +42,14 @@ transform=transforms.Compose([
         ])
 
 
-def detect(model,model_y5,device,img,img_size=(640),conf_thres=0.5,iou_thres=0.45,imshow_title='YOLO',draw_bb_line=True):
+def detect(model,model_y5,device,img,img_size=(800),conf_thres=0.5,iou_thres=0.45,imshow_title='YOLO',draw_bb_line=True):
 
     #logger, _, _ = create_logger(
         #cfg, cfg.LOG_DIR, 'demo')
+    
     img = np.ascontiguousarray(img)
+    img = pad_image_to_stride(img, stride=32, warn=False)
+    #print('Image shape:',img.shape)
     #device = select_device(logger,opt.device)
     #if os.path.exists(opt.save_dir):  # output dir
         #shutil.rmtree(opt.save_dir)  # delete dir
@@ -58,6 +61,7 @@ def detect(model,model_y5,device,img,img_size=(640),conf_thres=0.5,iou_thres=0.4
     #checkpoint = torch.load(opt.weights, map_location= device)
     #model.load_state_dict(checkpoint['state_dict'])
     #model = model.to(device)
+
     if half:
         model.half()  # to FP16
         if model_y5:
@@ -95,7 +99,7 @@ def detect(model,model_y5,device,img,img_size=(640),conf_thres=0.5,iou_thres=0.4
     t0 = time.time()
 
     #vid_path, vid_writer = None, None
-    im = torch.zeros((1, 3, img_size, img_size), device=device)  # init img
+    im = torch.zeros((1, 3, img.shape[0], img.shape[1]), device=device)  # init img
     _ = model(im.half() if half else im) if device.type != 'cpu' else None  # run once
     model.eval()
     
@@ -127,6 +131,8 @@ def detect(model,model_y5,device,img,img_size=(640),conf_thres=0.5,iou_thres=0.4
         t2_y5 =time_synchronized()
         total_time_y5.update(t2_y5-t1_y5,img.size(0))
         det = np.array(result.xyxy[0].cpu())
+        #print('RESULT:',result.xyxy)
+        #det = np.array(result.xyxy.cpu())
         img_det = np.squeeze(result.render())
         #cv2.imshow('hi',img_det)
     else:
@@ -345,11 +351,13 @@ def detect(model,model_y5,device,img,img_size=(640),conf_thres=0.5,iou_thres=0.4
     if model_y5:
         if det.shape[0]!=0:	
             bboxes = det
+            print("BBOXES: ",bboxes)
+            #for *xyxy,conf,cls in det[0]:
             for *xyxy,conf,cls in det:
 			    #print(xyxy)
                 label_det_pred = f'{names[int(cls)]} {conf:.2f}'
                 #print('label',label_det_pred)
-                bool_value = check_box_lane_localization(xyxy, img_det ,cur_lane_lines=cur_lane_lines)
+                bool_value = check_box_lane_localization(xyxy, img_det ,cur_lane_lines=cur_lane_lines, draw_line = draw_bb_line)
                 bboxes_in_lane.append(bool_value[0])
     
     else:
@@ -365,9 +373,6 @@ def detect(model,model_y5,device,img,img_size=(640),conf_thres=0.5,iou_thres=0.4
     
     print('PROCESS TIME:',time.time()-tt)  
     
-    cv2.imshow(imshow_title, cv2.cvtColor(img_det, cv2.COLOR_BGR2RGB))
-    #cv2.imshow('YOLO', img_det)
-    cv2.waitKey(1)  # 1 millisecond
         #if dataset.mode == 'images':
             #cv2.imwrite(save_path,img_det)
 
@@ -393,7 +398,8 @@ def detect(model,model_y5,device,img,img_size=(640),conf_thres=0.5,iou_thres=0.4
     print('yolov5 total avg time (%.3fs/frame)' % (total_time_y5))
     print('inf : (%.4fs/frame)   nms : (%.4fs/frame)' % (inf_time.avg,nms_time.avg))
     #print(bboxes)
-    return bboxes, bboxes_in_lane, turn_left_lane, turn_right_lane
+    img_det = cv2.cvtColor(img_det, cv2.COLOR_BGR2RGB)
+    return img_det, bboxes, bboxes_in_lane, turn_left_lane, turn_right_lane
 
 
 
