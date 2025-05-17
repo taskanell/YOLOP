@@ -152,6 +152,17 @@ def fitlane(mask, sel_labels, labels, stats):
         samples_y_line = np.array(samples_y_line)
         samples_x_line = samples_x_line[samples_y_line != -1]
         samples_y_line = samples_y_line[samples_y_line != -1]
+        if len(samples_x_line) < 2 or len(samples_y_line) < 2:
+            print('Not enough points to fit line')
+            return []  # not enough points to fit a line
+
+        if np.any(np.isnan(samples_x_line)) or np.any(np.isnan(samples_y_line)):
+            print('contains NaNs')
+            return []  # contains NaNs
+
+        if np.any(np.isinf(samples_x_line)) or np.any(np.isinf(samples_y_line)):
+            print('contains infs')
+            return []  # contains infs
         func_line = np.polyfit(samples_x_line, samples_y_line, 1)
         lines.append(func_line)
         
